@@ -3,6 +3,7 @@ using System.IO;
 using SQLite;
 using Android.App;
 using Tasky.PortableLibrary;
+using Firebase;
 
 namespace TaskyAndroid
 {
@@ -10,10 +11,10 @@ namespace TaskyAndroid
 	public class TaskyApp : Application {
 		public static TaskyApp Current { get; private set; }
 
-		public TodoItemManager TodoManager { get; set; }
-		SQLiteConnection conn;
+        public TodoItemManager TodoManager { get; set; }
+        SQLiteConnection conn;
 
-		public TaskyApp(IntPtr handle, global::Android.Runtime.JniHandleOwnership transfer)
+        public TaskyApp(IntPtr handle, global::Android.Runtime.JniHandleOwnership transfer)
 			: base(handle, transfer) {
 			Current = this;
 		}
@@ -22,13 +23,15 @@ namespace TaskyAndroid
 		{
 			base.OnCreate();
 
-			var sqliteFilename = "TodoItemDB.db3";
-			string libraryPath = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
-			var path = Path.Combine(libraryPath, sqliteFilename);
-			conn = new SQLiteConnection(path);
+            var sqliteFilename = "TodoItemDB.db3";
+            string libraryPath = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+            var path = Path.Combine(libraryPath, sqliteFilename);
+            //conn = new SQLiteConnection(path);
 
-			TodoManager = new TodoItemManager(conn);
-		}
-	}
+            //TodoManager = new TodoItemManager(conn);
+
+            FirebaseApp.InitializeApp(this);
+        }
+    }
 }
 

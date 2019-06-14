@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using Android.App;
 using Android.Content;
 using Android.OS;
 using Android.Widget;
+using Firebase.DynamicLinks;
 using Tasky.PortableLibrary;
 using TaskyAndroid;
 using TaskyAndroid.ApplicationLayer;
@@ -12,10 +14,25 @@ namespace TaskyAndroid.Screens
 	/// <summary>
 	/// Main ListView screen displays a list of tasks, plus an [Add] button
 	/// </summary>
-	[Activity (Label = "Tasky", MainLauncher = true, Icon="@drawable/icon")]			
-	public class HomeScreen : Activity 
-	{
-		TodoItemListAdapter taskList;
+	[Activity (MainLauncher = true, Icon="@drawable/icon")]			
+	public class HomeScreen : Activity, Android.Gms.Tasks.IOnSuccessListener, Android.Gms.Tasks.IOnFailureListener
+    {
+        public void OnFailure(Java.Lang.Exception e)
+        {
+            System.Console.WriteLine($"Failed to receive Dynamic Link - exception: {e}");
+        }
+
+        public void OnSuccess(Java.Lang.Object result)
+        {
+            PendingDynamicLinkData pendingDynamicLinkData = (PendingDynamicLinkData)result;
+            if (pendingDynamicLinkData != null)
+            {
+                System.Console.WriteLine($"Received Dynamic Link: {pendingDynamicLinkData.Link}");
+                //ViewModel.SetDeepLink(pendingDynamicLinkData.Link.ToString());
+            }
+        }
+
+        TodoItemListAdapter taskList;
 		IList<TodoItem> tasks;
 		Button addTaskButton;
 		ListView taskListView;
@@ -52,13 +69,23 @@ namespace TaskyAndroid.Screens
 		{
 			base.OnResume ();
 
-			tasks = TaskyApp.Current.TodoManager.GetTasks();
-			
-			// create our adapter
-			taskList = new TodoItemListAdapter(this, tasks);
+            //tasks = TaskyApp.Current.TodoManager.GetTasks();
 
-			//Hook up our adapter to our ListView
-			taskListView.Adapter = taskList;
-		}
-	}
+            //// create our adapter
+            //taskList = new TodoItemListAdapter(this, tasks);
+
+            ////Hook up our adapter to our ListView
+            //taskListView.Adapter = taskList;
+
+            try
+            {
+                FirebaseDynamicLinks.Instance.GetDynamicLink(Intent).AddOnSuccessListener(this, this).AddOnFailureListener(this, this);
+            }
+            catch (Exception exc)
+            {
+                int x = 0;
+            }
+
+        }
+    }
 }

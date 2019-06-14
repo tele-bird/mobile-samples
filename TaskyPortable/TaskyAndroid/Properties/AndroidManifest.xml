@@ -1,6 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="1.0" package="com.xamarin.samples.taskyandroid">
-	<application android:label="Tasky" android:debuggable="true" android:icon="@drawable/icon">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="1.0" package="com.keurig.app" android:installLocation="auto">
+	<application android:label="Tasky" android:debuggable="true">
+		<activity android:name="taskyandroid.screens.HomeScreen">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+			<intent-filter android:autoVerify="true">
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data android:host="brewresearch.page.link" android:scheme="https" />
+				<data android:host="brewresearch.keurig.com" android:scheme="https" />
+				<!--<data android:host="brewresearch.keurig.com/redirect" android:scheme="https" />-->
+				<!--<data android:host="brewresearch.page.link" android:pathPrefix="/amazondrs" android:scheme="https" />-->
+				<!--<data android:host="brewresearch.page.link" android:scheme="http" />-->
+			</intent-filter>
+		</activity>
 	</application>
-	<uses-sdk />
+	<uses-sdk android:targetSdkVersion="27" />
 </manifest>

@@ -6,6 +6,9 @@ using UIKit;
 using SQLite;
 using Tasky.PortableLibrary;
 using System.IO;
+using Firebase.DynamicLinks;
+using ObjCRuntime;
+using System.Text;
 
 namespace Tasky 
 {
@@ -64,8 +67,84 @@ namespace Tasky
 			navController.PushViewController(homeViewController, false);
 			window.RootViewController = navController;
 			window.MakeKeyAndVisible ();
+
+            Firebase.Core.App.Configure();
 			
 			return true;
 		}
-	}
+
+        public override bool OpenUrl(UIApplication app, NSUrl url, NSDictionary options)
+        {
+            return OpenUrl(app, url, null, null);
+        }
+
+        public override bool OpenUrl(UIApplication application, NSUrl url, string sourceApplication, NSObject annotation)
+        {
+            var dynamicLink = DynamicLinks.SharedInstance?.FromCustomSchemeUrl(url);
+
+            ShowMessage(ConstructMessageTitle("OpenUrl", null, dynamicLink), ConstructDebugText(url, null, dynamicLink), application.KeyWindow.RootViewController);
+
+            if (dynamicLink == null || dynamicLink.Url == null)
+            {
+                return false;
+            }
+
+            //// handle the deep link here!
+            ////return _deepLinkService.TryOpenDeepLink(url.AbsoluteString);
+
+            return true;
+        }
+
+        public override bool ContinueUserActivity(UIApplication application, NSUserActivity userActivity, UIApplicationRestorationHandler completionHandler)
+        {
+            bool result = DynamicLinks.SharedInstance.HandleUniversalLink(userActivity.WebPageUrl, (dynamicLink, error) =>
+            {
+                ShowMessage(ConstructMessageTitle("ContinueUserActivity", error, dynamicLink), ConstructDebugText(userActivity.WebPageUrl, error, dynamicLink), application.KeyWindow.RootViewController);
+            });
+
+            if (!result)
+            {
+                ShowMessage("ContinueUserActivity", $"HandleUniversalLink returned false{Environment.NewLine}{Environment.NewLine}input: {userActivity.WebPageUrl}", application.KeyWindow.RootViewController);
+            }
+
+            return result;
+        }
+
+        public static void ShowMessage(string title, string message, UIViewController fromViewController)
+        {
+            var alert = UIAlertController.Create(title, message, UIAlertControllerStyle.Alert);
+            alert.AddAction(UIAlertAction.Create("OK", UIAlertActionStyle.Default, (obj) => { }));
+            fromViewController.PresentViewController(alert, true, null);
+        }
+
+        private string ConstructMessageTitle(string context, NSError error, DynamicLink dynamicLink)
+        {
+            return context + ((error != null) ? " error" : (dynamicLink == null) || (dynamicLink.Url == null) ? " fail" : " success");
+        }
+
+        private string ConstructDebugText(NSUrl inputUrl, NSError error, DynamicLink dynamicLink)
+        {
+            StringBuilder sbDebugText = new StringBuilder();
+            sbDebugText.AppendLine($"input: {inputUrl}");
+            if (error != null)
+            {
+                sbDebugText.Append(error.LocalizedDescription);
+            }
+            else
+            {
+                if (dynamicLink == null)
+                {
+                    sbDebugText.Append("dynamicLink: null");
+                }
+                else
+                {
+                    sbDebugText.AppendLine($"{Environment.NewLine}URL: {dynamicLink.Url}");
+                    sbDebugText.AppendLine($"{Environment.NewLine}MatchType: {dynamicLink.MatchType}");
+                    sbDebugText.AppendLine($"{Environment.NewLine}MinimumAppVersion: {dynamicLink.MinimumAppVersion}");
+                }
+            }
+
+            return sbDebugText.ToString();
+        }
+    }
 }
