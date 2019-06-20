@@ -69,6 +69,7 @@ namespace Tasky
 			window.MakeKeyAndVisible ();
 
             Firebase.Core.App.Configure();
+            DynamicLinks.PerformDiagnostics(null);
 			
 			return true;
 		}
@@ -80,71 +81,67 @@ namespace Tasky
 
         public override bool OpenUrl(UIApplication application, NSUrl url, string sourceApplication, NSObject annotation)
         {
+            Console.WriteLine($"I have received a URL through a custom scheme! {url.AbsoluteString}");
             var dynamicLink = DynamicLinks.SharedInstance?.FromCustomSchemeUrl(url);
-
-            ShowMessage(ConstructMessageTitle("OpenUrl", null, dynamicLink), ConstructDebugText(url, null, dynamicLink), application.KeyWindow.RootViewController);
-
-            if (dynamicLink == null || dynamicLink.Url == null)
+            if(dynamicLink != null)
             {
-                return false;
+                HandleIncomingDynamicLink(dynamicLink);
+                return true;
             }
 
-            //// handle the deep link here!
-            ////return _deepLinkService.TryOpenDeepLink(url.AbsoluteString);
-
-            return true;
+            return false;
         }
 
         public override bool ContinueUserActivity(UIApplication application, NSUserActivity userActivity, UIApplicationRestorationHandler completionHandler)
         {
-            bool result = DynamicLinks.SharedInstance.HandleUniversalLink(userActivity.WebPageUrl, (dynamicLink, error) =>
+            if(userActivity.WebPageUrl != null)
             {
-                ShowMessage(ConstructMessageTitle("ContinueUserActivity", error, dynamicLink), ConstructDebugText(userActivity.WebPageUrl, error, dynamicLink), application.KeyWindow.RootViewController);
-            });
-
-            if (!result)
-            {
-                ShowMessage("ContinueUserActivity", $"HandleUniversalLink returned false{Environment.NewLine}{Environment.NewLine}input: {userActivity.WebPageUrl}", application.KeyWindow.RootViewController);
-            }
-
-            return result;
-        }
-
-        public static void ShowMessage(string title, string message, UIViewController fromViewController)
-        {
-            var alert = UIAlertController.Create(title, message, UIAlertControllerStyle.Alert);
-            alert.AddAction(UIAlertAction.Create("OK", UIAlertActionStyle.Default, (obj) => { }));
-            fromViewController.PresentViewController(alert, true, null);
-        }
-
-        private string ConstructMessageTitle(string context, NSError error, DynamicLink dynamicLink)
-        {
-            return context + ((error != null) ? " error" : (dynamicLink == null) || (dynamicLink.Url == null) ? " fail" : " success");
-        }
-
-        private string ConstructDebugText(NSUrl inputUrl, NSError error, DynamicLink dynamicLink)
-        {
-            StringBuilder sbDebugText = new StringBuilder();
-            sbDebugText.AppendLine($"input: {inputUrl}");
-            if (error != null)
-            {
-                sbDebugText.Append(error.LocalizedDescription);
-            }
-            else
-            {
-                if (dynamicLink == null)
+                Console.WriteLine($"Incoming URL is {userActivity.WebPageUrl}");
+                bool linkHandled = DynamicLinks.SharedInstance.HandleUniversalLink(userActivity.WebPageUrl, (dynamicLink, error) =>
                 {
-                    sbDebugText.Append("dynamicLink: null");
+                    if (error != null)
+                    {
+                        Console.WriteLine($"Found an error! {error.LocalizedDescription}");
+                    }
+                    else if (dynamicLink != null)
+                    {
+                        Console.WriteLine(dynamicLink.Url?.AbsoluteString);
+                        HandleIncomingDynamicLink(dynamicLink);
+                    }
+                });
+
+                if (linkHandled)
+                {
+                    Console.WriteLine("Link handled");
                 }
                 else
                 {
-                    sbDebugText.AppendLine($"{Environment.NewLine}URL: {dynamicLink.Url}");
-                    sbDebugText.AppendLine($"{Environment.NewLine}MatchType: {dynamicLink.MatchType}");
-                    sbDebugText.AppendLine($"{Environment.NewLine}MinimumAppVersion: {dynamicLink.MinimumAppVersion}");
+                    Console.WriteLine("Link not handled");
                 }
             }
 
-            return sbDebugText.ToString();
+            return false;
+        }
+
+        private void HandleIncomingDynamicLink(DynamicLink dynamicLink)
+        {
+            if(dynamicLink.Url == null)
+            {
+                Console.WriteLine("That's weird.  My dynamic link object has no URL.");
+            }
+            else
+            {
+                Console.WriteLine($"Your incoming link parameter is {dynamicLink.Url.AbsoluteString}");
+                var components = new NSUrlComponents(dynamicLink.Url, resolveAgainstBaseUrl: false);
+                if (components.QueryItems != null)
+                {
+                    foreach(var queryItem in components.QueryItems)
+                    {
+                        Console.WriteLine($"Parameter {queryItem.Name} has a value of {queryItem.Value}");
+                    }
+                    Console.WriteLine($"Dynamic link match type is {dynamicLink.MatchType}");
+                }
+            }
         }
     }
 }

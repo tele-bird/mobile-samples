@@ -41,11 +41,13 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.keurig.app</string>
+			<string>Bundle ID</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.keurig.app</string>
 			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
 		</dict>
 	</array>
 </dict>
