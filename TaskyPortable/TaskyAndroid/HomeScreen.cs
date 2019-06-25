@@ -28,6 +28,12 @@ namespace TaskyAndroid.Screens
             if (pendingDynamicLinkData != null)
             {
                 System.Console.WriteLine($"Received Dynamic Link: {pendingDynamicLinkData.Link}");
+                AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+                AlertDialog dialog = dialogBuilder.Create();
+                dialog.SetTitle("Received Deep Link");
+                dialog.SetMessage(pendingDynamicLinkData.Link.ToString());
+                dialog.SetButton("OK", (c, ev) => { });
+                dialog.Show();
                 //ViewModel.SetDeepLink(pendingDynamicLinkData.Link.ToString());
             }
         }
