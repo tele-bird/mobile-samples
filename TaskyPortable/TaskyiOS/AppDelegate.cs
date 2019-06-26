@@ -25,21 +25,27 @@ namespace Tasky
 		}
 	}
 
-	[Register ("AppDelegate")]
-	public partial class AppDelegate : UIApplicationDelegate 
-	{
-		// class-level declarations
-		UIWindow window;
-		UINavigationController navController;
-		UITableViewController homeViewController;
+    [Register("AppDelegate")]
+    public partial class AppDelegate : UIApplicationDelegate
+    {
+        // class-level declarations
+        UIWindow window;
+        UINavigationController navController;
+        UITableViewController homeViewController;
 
-		public static AppDelegate Current { get; private set; }
-		public TodoItemManager TodoManager { get; set; }
-		SQLiteConnection conn;
+        public static AppDelegate Current { get; private set; }
+        public TodoItemManager TodoManager { get; set; }
+        SQLiteConnection conn;
 
-        NSUrl _deepLinkUrl = null;
+        // constants for deep linking workaround:
+        private readonly string[] DeepLinkHosts = new string[2] { "brewresearch.keurig.com", "brewresearch.page.link" };
+        private const string FirebaseDeepLinkKey = "link";
+        private const string FirebaseIosAppStoreIdentifierKey = "isi";
+        private const string FirebaseIosAppStoreIdentifierValue = "1098234650";
+        private const string FirebaseIosAppBundleIdentifierKey = "ibi";
+        private const string FirebaseIosAppBundleIdentifierValue = "com.keurig.app";
 
-		public override bool FinishedLaunching (UIApplication app, NSDictionary options)
+        public override bool FinishedLaunching (UIApplication app, NSDictionary options)
 		{
 			Current = this;
 
@@ -77,12 +83,12 @@ namespace Tasky
             //DynamicLinks.PerformDiagnostics(null);
 
             Console.WriteLine("Phil's FinishedLaunching is about to parse a deep link URL from the clipboard...");
-            _deepLinkUrl = GetDeepLinkUrlFromClipboard().Result;
-            if (_deepLinkUrl != null)
+            NSUrl deepLinkUrl = GetDeepLinkUrlFromClipboard().Result;
+            if (deepLinkUrl != null)
             {
-                Console.WriteLine($"Phil's FinishedLaunching has parsed a deep link URL from the clipboard: {_deepLinkUrl}");
+                Console.WriteLine($"Phil's FinishedLaunching has parsed a deep link URL from the clipboard: {deepLinkUrl}");
                 Console.WriteLine($"Phil's FinishedLaunching Clipboard contents after parsing: {GetClipboardText().Result}");
-                ShowMessage("FinishedLaunching found a deep link", _deepLinkUrl.ToString(), app.KeyWindow.RootViewController);
+                ShowMessage("FinishedLaunching found a deep link", deepLinkUrl.ToString(), app.KeyWindow.RootViewController);
             }
 
 
@@ -101,45 +107,46 @@ namespace Tasky
             NSUrl deepLinkUrl = null;
             string clipboardText = await GetClipboardText(false);
             Console.WriteLine($"Phil's GetDeepLinkUrlFromClipboard found on clipboard: {clipboardText}");
-            NSUrl firebaseUrl = null;
+            NSUrl incomingUrl = null;
             try
             {
-                firebaseUrl = NSUrl.FromString(clipboardText);
-                Console.WriteLine($"Phil's GetDeepLinkUrlFromClipboard parsed a Firebase URL from clipboard: {firebaseUrl}");
+                incomingUrl = NSUrl.FromString(clipboardText);
+                Console.WriteLine($"Phil's GetDeepLinkUrlFromClipboard parsed a Firebase URL from clipboard: {incomingUrl}");
             }
             catch (Exception exc)
             {
+                incomingUrl = null;
                 Console.WriteLine($"Phil's GetDeepLinkUrlFromClipboard caught an {exc.GetType().FullName} while parsing the clipboard contents into a URL. clipboardText: {clipboardText}");
             }
-            if (firebaseUrl != null && TryParseDeepLink(firebaseUrl, out deepLinkUrl))
+            if (incomingUrl != null && TryParseDeepLink(incomingUrl, out deepLinkUrl))
             {
                 await GetClipboardText(true);
             }
             return deepLinkUrl;
         }
 
-        private bool TryParseDeepLink(NSUrl firebaseUrl, out NSUrl deepLinkUrl)
+        private bool TryParseDeepLink(NSUrl incomingUrl, out NSUrl deepLinkUrl)
         {
             deepLinkUrl = null;
             bool success = false;
 
-            NSUrlComponents urlComponents = new NSUrlComponents(firebaseUrl, false);
-            if(urlComponents.QueryItems != null)
+            NSUrlComponents incomingUrlComponents = new NSUrlComponents(incomingUrl, false);
+            if(DeepLinkHosts.Contains(incomingUrlComponents.Host.ToLower()) && incomingUrlComponents.QueryItems != null)
             {
                 NSUrl candidateDeepLinkUrl = null;
                 Dictionary<string, string> queryItems = new Dictionary<string, string>();
-                foreach (NSUrlQueryItem queryItem in urlComponents.QueryItems)
+                foreach (NSUrlQueryItem queryItem in incomingUrlComponents.QueryItems)
                 {
                     queryItems.Add(queryItem.Name.ToLower(), queryItem.Value);
-                    if (queryItem.Name.ToLower() == "link")
+                    if (queryItem.Name.ToLower() == FirebaseDeepLinkKey)
                     {
                         candidateDeepLinkUrl = NSUrl.FromString(queryItem.Value);
                     }
                 }
 
                 success =
-                    queryItems.Keys.Contains("isi") &&
-                    queryItems.Keys.Contains("ibi") &&
+                    queryItems.Keys.Contains(FirebaseIosAppStoreIdentifierKey) && queryItems[FirebaseIosAppStoreIdentifierKey] == FirebaseIosAppStoreIdentifierValue &&
+                    queryItems.Keys.Contains(FirebaseIosAppBundleIdentifierKey) && queryItems[FirebaseIosAppBundleIdentifierKey] == FirebaseIosAppBundleIdentifierValue &&
                     candidateDeepLinkUrl != null;
 
                 if (success)
